@@ -1,0 +1,8 @@
+[package]
+name = "markov"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8.0"
+smallvec = { version = "1.7.0", features = ["const_generics"] }
