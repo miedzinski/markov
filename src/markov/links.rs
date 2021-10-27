@@ -16,7 +16,6 @@ impl<T: Iterator> LinkIterator for T {}
 pub struct Links<T, I, const N: usize> {
     iter: I,
     from: SmallVec<[T; N]>,
-    to: Option<T>,
 }
 
 impl<'a, T, I, const N: usize> Links<T, I, N>
@@ -38,9 +37,7 @@ where
             }
         }
 
-        let to = iter.next();
-
-        Links { iter, from, to }
+        Links { iter, from }
     }
 }
 
@@ -56,17 +53,12 @@ where
             return None;
         }
 
-        let to = self.to.as_ref().cloned()?;
+        let to = self.iter.next()?;
         let from: &[T; N] = self.from.as_slice().try_into().unwrap();
         let from = from.clone();
 
         self.from.rotate_left(1);
-
-        if let Some(item) = self.to.take() {
-            self.from[N - 1] = item;
-        }
-
-        self.to = self.iter.next();
+        self.from[N - 1] = to.clone();
 
         Some(Link::new(from, to))
     }
