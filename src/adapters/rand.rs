@@ -1,7 +1,8 @@
+use std::cell::RefCell;
+
 use rand::{Rng, RngCore};
 
 use crate::markov::choose::Choose;
-use std::cell::RefCell;
 
 #[derive(Clone)]
 pub struct RandChoose<R> {

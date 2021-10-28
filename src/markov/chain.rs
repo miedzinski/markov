@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use super::choose::Choose;
 use super::links::LinkIterator;
 use super::repository::Repository;
@@ -15,15 +17,16 @@ impl<R, C> Chain<R, C> {
         }
     }
 
-    pub fn feed<T, I, const N: usize>(&mut self, iter: I)
+    pub fn feed<T, I, const N: usize>(&mut self, iter: I) -> Result<()>
     where
         T: Clone,
         R: Repository<T, N>,
         I: IntoIterator<Item = T>,
     {
         for link in iter.into_iter().links() {
-            self.repository.increment_weight(link);
+            self.repository.increment_weight(link)?;
         }
+        Ok(())
     }
 
     pub fn iter_from<T, const N: usize>(&self, start: [T; N]) -> ChainIterator<T, C, N>
@@ -38,13 +41,12 @@ impl<R, C> Chain<R, C> {
         }
     }
 
-    pub fn iter_random<T, const N: usize>(&self) -> Option<ChainIterator<T, C, N>>
+    pub fn iter_random<T, const N: usize>(&self) -> Result<ChainIterator<T, C, N>>
     where
         R: Repository<T, N>,
         C: Choose<T> + Clone,
     {
-        let start = self.repository.random();
-        start.map(|start| self.iter_from(start))
+        self.repository.random().map(|start| self.iter_from(start))
     }
 }
 
@@ -59,18 +61,21 @@ where
     T: Clone,
     S: Choose<T>,
 {
-    type Item = &'a T;
+    type Item = Result<&'a T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let weights = self.repository.get(&self.previous);
-        if weights.is_empty() {
-            return None;
+        match weights {
+            Ok(weights) if !weights.is_empty() => {
+                let state = self
+                    .chooser
+                    .choose(weights.iter().map(|(state, &weight)| (state, weight)));
+                self.previous.rotate_left(1);
+                self.previous[N - 1] = state.clone();
+                Some(Ok(state))
+            }
+            Err(e) => Some(Err(e)),
+            _ => None,
         }
-        let state = self
-            .chooser
-            .choose(weights.iter().map(|(state, &weight)| (state, weight)));
-        self.previous.rotate_left(1);
-        self.previous[N - 1] = state.clone();
-        Some(state)
     }
 }
