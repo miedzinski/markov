@@ -1,9 +1,11 @@
+use crate::markov::types::WeightMap;
+
 pub trait Choose<T> {
-    fn choose<'a>(&self, states: (impl Iterator<Item = (&'a T, u32)> + Clone)) -> &'a T {
-        let sum = states.clone().map(|x| x.1).sum();
+    fn choose(&self, map: WeightMap<T>) -> T {
+        let sum = map.values().sum();
         let random = self.generate_random(sum);
         let mut i = 0;
-        for (state, weight) in states {
+        for (state, weight) in map {
             i += weight;
             if i > random {
                 return state;

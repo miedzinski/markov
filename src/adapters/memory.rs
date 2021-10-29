@@ -10,14 +10,12 @@ use crate::markov::types::{Link, WeightMap};
 
 pub struct MemoryRepository<T, const N: usize> {
     chain: HashMap<[T; N], WeightMap<T>>,
-    empty: WeightMap<T>,
 }
 
 impl<T, const N: usize> MemoryRepository<T, N> {
     pub fn new() -> MemoryRepository<T, N> {
         MemoryRepository {
             chain: HashMap::new(),
-            empty: WeightMap::new(),
         }
     }
 }
@@ -26,8 +24,8 @@ impl<T, const N: usize> Repository<T, N> for MemoryRepository<T, N>
 where
     T: Clone + Eq + Hash,
 {
-    fn get(&self, from: &[T; N]) -> Result<&WeightMap<T>> {
-        Ok(self.chain.get(from).unwrap_or(&self.empty))
+    fn get(&self, from: &[T; N]) -> Result<WeightMap<T>> {
+        Ok(self.chain.get(from).cloned().unwrap_or_else(WeightMap::new))
     }
 
     fn random(&self) -> Result<[T; N]> {
@@ -57,7 +55,7 @@ mod tests {
     fn get_returns_empty_if_missing() {
         let repository: MemoryRepository<i32, 3> = MemoryRepository::new();
 
-        assert_eq!(repository.get(&[1, 2, 3]).unwrap(), &WeightMap::new());
+        assert_eq!(repository.get(&[1, 2, 3]).unwrap(), WeightMap::new());
     }
 
     #[test]
@@ -66,7 +64,7 @@ mod tests {
         let map = WeightMap::new();
         repository.chain.insert([1, 2, 3], map.clone());
 
-        assert_eq!(repository.get(&[1, 2, 3]).unwrap(), &map);
+        assert_eq!(repository.get(&[1, 2, 3]).unwrap(), map);
     }
 
     #[test]

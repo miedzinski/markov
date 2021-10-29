@@ -56,20 +56,18 @@ pub struct ChainIterator<'a, T, S, const N: usize> {
     previous: [T; N],
 }
 
-impl<'a, T, S, const N: usize> Iterator for ChainIterator<'a, T, S, N>
+impl<T, S, const N: usize> Iterator for ChainIterator<'_, T, S, N>
 where
     T: Clone,
     S: Choose<T>,
 {
-    type Item = Result<&'a T>;
+    type Item = Result<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let weights = self.repository.get(&self.previous);
         match weights {
             Ok(weights) if !weights.is_empty() => {
-                let state = self
-                    .chooser
-                    .choose(weights.iter().map(|(state, &weight)| (state, weight)));
+                let state = self.chooser.choose(weights);
                 self.previous.rotate_left(1);
                 self.previous[N - 1] = state.clone();
                 Some(Ok(state))
