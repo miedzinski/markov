@@ -4,23 +4,25 @@ use super::choose::Choose;
 use super::links::LinkIterator;
 use super::repository::Repository;
 
-pub struct Chain<R, C> {
-    repository: R,
-    chooser: C,
+pub struct Chain<'a, T, const N: usize> {
+    repository: &'a mut dyn Repository<T, N>,
+    chooser: &'a dyn Choose<T>,
 }
 
-impl<R, C> Chain<R, C> {
-    pub fn new(repository: R, chooser: C) -> Chain<R, C> {
+impl<T, const N: usize> Chain<'_, T, N> {
+    pub fn new<'a>(
+        repository: &'a mut dyn Repository<T, N>,
+        chooser: &'a dyn Choose<T>,
+    ) -> Chain<'a, T, N> {
         Chain {
             repository,
             chooser,
         }
     }
 
-    pub fn feed<T, I, const N: usize>(&mut self, iter: I) -> Result<()>
+    pub fn feed<I>(&mut self, iter: I) -> Result<()>
     where
         T: Clone,
-        R: Repository<T, N>,
         I: IntoIterator<Item = T>,
     {
         for link in iter.into_iter().links() {
@@ -29,37 +31,28 @@ impl<R, C> Chain<R, C> {
         Ok(())
     }
 
-    pub fn iter_from<T, const N: usize>(&self, start: [T; N]) -> ChainIterator<T, C, N>
-    where
-        R: Repository<T, N>,
-        C: Choose<T> + Clone,
-    {
+    pub fn iter_from(&self, start: [T; N]) -> ChainIterator<T, N> {
         ChainIterator {
-            repository: &self.repository,
-            chooser: self.chooser.clone(),
+            repository: self.repository,
+            chooser: self.chooser,
             previous: start,
         }
     }
 
-    pub fn iter_random<T, const N: usize>(&self) -> Result<ChainIterator<T, C, N>>
-    where
-        R: Repository<T, N>,
-        C: Choose<T> + Clone,
-    {
+    pub fn iter_random(&self) -> Result<ChainIterator<T, N>> {
         self.repository.random().map(|start| self.iter_from(start))
     }
 }
 
-pub struct ChainIterator<'a, T, S, const N: usize> {
+pub struct ChainIterator<'a, T, const N: usize> {
     repository: &'a dyn Repository<T, N>,
-    chooser: S,
+    chooser: &'a dyn Choose<T>,
     previous: [T; N],
 }
 
-impl<T, S, const N: usize> Iterator for ChainIterator<'_, T, S, N>
+impl<T, const N: usize> Iterator for ChainIterator<'_, T, N>
 where
     T: Clone,
-    S: Choose<T>,
 {
     type Item = Result<T>;
 
