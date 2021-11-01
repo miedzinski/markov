@@ -3,7 +3,7 @@ use std::hash::Hash;
 use anyhow::Result;
 use arrayvec::ArrayVec;
 use rusqlite::types::FromSql;
-use rusqlite::{params_from_iter, Connection, Error, ToSql, Transaction};
+use rusqlite::{params_from_iter, Connection, Error, Params, ToSql, Transaction};
 
 use super::schema;
 use crate::markov::repository::Repository;
@@ -69,6 +69,28 @@ impl SqliteRepository {
         transaction.prepare_cached(&sql)?.execute(params)?;
         Ok(())
     }
+
+    fn get_from_states<T, const N: usize>(&self, sql: &str, params: impl Params) -> Result<[T; N]>
+    where
+        T: FromSql,
+    {
+        self.connection
+            .prepare_cached(sql)?
+            .query_and_then(params, |row| {
+                let mut words: ArrayVec<_, N> = ArrayVec::new();
+                for idx in 0..N {
+                    words.push(row.get(idx)?);
+                }
+                let words = unsafe {
+                    // This is safe, because we've just pushed N items.
+                    // Using unchecked variant allows us to omit T: Debug.
+                    words.into_inner_unchecked()
+                };
+                Ok(words)
+            })?
+            .next()
+            .unwrap()
+    }
 }
 
 impl<T, const N: usize> Repository<T, N> for SqliteRepository
@@ -87,23 +109,13 @@ where
     }
 
     fn random(&self) -> Result<[T; N]> {
-        let sql = schema::get_random(N);
-        self.connection
-            .prepare_cached(&sql)?
-            .query_and_then([], |row| {
-                let mut words: ArrayVec<_, N> = ArrayVec::new();
-                for idx in 0..N {
-                    words.push(row.get(idx)?);
-                }
-                let words = unsafe {
-                    // This is safe, because we've just pushed N items.
-                    // Using unchecked variant allows us to omit T: Debug.
-                    words.into_inner_unchecked()
-                };
-                Ok(words)
-            })?
-            .next()
-            .unwrap()
+        let sql = schema::get_random(N, false);
+        self.get_from_states(&sql, [])
+    }
+
+    fn random_starting_with(&self, state: &T) -> Result<[T; N]> {
+        let sql = schema::get_random(N, true);
+        self.get_from_states(&sql, [state])
     }
 
     fn increment_weight(&mut self, link: Link<T, N>) -> Result<()> {

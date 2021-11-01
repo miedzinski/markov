@@ -118,14 +118,15 @@ pub fn get_weights(n: usize) -> String {
 }
 
 #[cached]
-pub fn get_random(n: usize) -> String {
+pub fn get_random(n: usize, filter_starts_with: bool) -> String {
     let max_rowid = SqlBuilder::select_from("transition_from")
         .field("max(rowid)")
         .subquery_as("max_rowid")
         .unwrap();
-    (0..n)
+    let mut builder = SqlBuilder::select_from(name!("transition_from"; "tf"));
+    let mut builder = (0..n)
         .fold(
-            &mut SqlBuilder::select_from(name!("transition_from"; "tf")),
+            &mut builder,
             |builder, i| {
                 let alias = format!("w{}", i);
                 builder
@@ -134,8 +135,10 @@ pub fn get_random(n: usize) -> String {
                     .field(format!("{}.value", &alias))
             },
         )
-        .field(&max_rowid)
-        .and_where("tf.rowid >= abs(random()) % max_rowid")
-        .sql()
-        .unwrap()
+        .field(max_rowid)
+        .and_where("tf.rowid >= abs(random()) % max_rowid");
+    if filter_starts_with {
+        builder = builder.and_where_eq(word_fk(0), "?");
+    }
+    builder.sql().unwrap()
 }

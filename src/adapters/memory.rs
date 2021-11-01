@@ -37,6 +37,16 @@ where
             .context("Failed to choose random states.")
     }
 
+    fn random_starting_with(&self, state: &T) -> Result<[T; N]> {
+        let mut rng = thread_rng();
+        self.chain
+            .keys()
+            .filter(|key| key.first() == Some(state))
+            .choose(&mut rng)
+            .cloned()
+            .context("Failed to choose random states starting with given state.")
+    }
+
     fn increment_weight(&mut self, link: Link<T, N>) -> Result<()> {
         let Link { from, to } = link;
         let weights = self.chain.entry(from).or_insert_with(WeightMap::new);

@@ -42,6 +42,12 @@ impl<T, const N: usize> Chain<'_, T, N> {
     pub fn iter_random(&self) -> Result<ChainIterator<T, N>> {
         self.repository.random().map(|start| self.iter_from(start))
     }
+
+    pub fn iter_from_state(&self, state: &T) -> Result<ChainIterator<T, N>> {
+        self.repository
+            .random_starting_with(state)
+            .map(|start| self.iter_from(start))
+    }
 }
 
 pub struct ChainIterator<'a, T, const N: usize> {
