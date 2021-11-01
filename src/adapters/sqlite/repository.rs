@@ -3,7 +3,9 @@ use std::hash::Hash;
 use anyhow::Result;
 use arrayvec::ArrayVec;
 use rusqlite::types::FromSql;
-use rusqlite::{params_from_iter, Connection, Error, Params, ToSql, Transaction};
+use rusqlite::{
+    params_from_iter, Connection, Error, OptionalExtension, Params, ToSql, Transaction,
+};
 
 use super::schema;
 use crate::markov::repository::Repository;
@@ -31,9 +33,10 @@ impl SqliteRepository {
         match result {
             Err(Error::QueryReturnedNoRows) => {
                 let sql = schema::insert_word();
-                transaction.prepare_cached(&sql)?.execute([value])?;
-                let rowid = transaction.last_insert_rowid();
-                Ok(rowid)
+                transaction
+                    .prepare_cached(&sql)?
+                    .insert([value])
+                    .map_err(Into::into)
             }
             result => result.map_err(Into::into),
         }
@@ -51,9 +54,10 @@ impl SqliteRepository {
         match result {
             Err(Error::QueryReturnedNoRows) => {
                 let sql = schema::insert_transition_from(N);
-                transaction.prepare_cached(&sql)?.execute(params)?;
-                let rowid = transaction.last_insert_rowid();
-                Ok(rowid)
+                transaction
+                    .prepare_cached(&sql)?
+                    .insert(params)
+                    .map_err(Into::into)
             }
             result => result.map_err(Into::into),
         }
@@ -79,23 +83,21 @@ impl SqliteRepository {
         T: FromSql,
     {
         let mut statement = self.connection.prepare_cached(sql)?;
-        let mut rows = statement.query_map(params, |row| {
-            let mut words: ArrayVec<_, N> = ArrayVec::new();
-            for idx in 0..N {
-                words.push(row.get(idx)?);
-            }
-            let words = unsafe {
-                // This is safe, because we've just pushed N items.
-                // Using unchecked variant allows us to omit T: Debug.
-                words.into_inner_unchecked()
-            };
-            Ok(words)
-        })?;
-        match rows.next() {
-            Some(Err(Error::QueryReturnedNoRows)) => Ok(None),
-            Some(r) => Ok(Some(r?)),
-            None => Ok(None),
-        }
+        statement
+            .query_row(params, |row| {
+                let mut words: ArrayVec<_, N> = ArrayVec::new();
+                for idx in 0..N {
+                    words.push(row.get(idx)?);
+                }
+                let words = unsafe {
+                    // This is safe, because we've just pushed N items.
+                    // Using unchecked variant allows us to omit T: Debug.
+                    words.into_inner_unchecked()
+                };
+                Ok(words)
+            })
+            .optional()
+            .map_err(Into::into)
     }
 }
 
