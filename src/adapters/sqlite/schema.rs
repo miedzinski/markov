@@ -125,20 +125,17 @@ pub fn get_random(n: usize, filter_starts_with: bool) -> String {
         .unwrap();
     let mut builder = SqlBuilder::select_from(name!("transition_from"; "tf"));
     let mut builder = (0..n)
-        .fold(
-            &mut builder,
-            |builder, i| {
-                let alias = format!("w{}", i);
-                builder
-                    .join(name!("word"; &alias))
-                    .on_eq(format!("{}.id", &alias), format!("tf.{}", word_fk(i)))
-                    .field(format!("{}.value", &alias))
-            },
-        )
+        .fold(&mut builder, |builder, i| {
+            let alias = format!("w{}", i);
+            builder
+                .join(name!("word"; &alias))
+                .on_eq(format!("{}.id", &alias), format!("tf.{}", word_fk(i)))
+                .field(format!("{}.value", &alias))
+        })
         .field(max_rowid)
         .and_where("tf.rowid >= abs(random()) % max_rowid");
     if filter_starts_with {
-        builder = builder.and_where_eq(word_fk(0), "?");
+        builder = builder.and_where_eq("w0.value", "?");
     }
     builder.sql().unwrap()
 }

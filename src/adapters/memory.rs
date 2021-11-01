@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use rand::seq::IteratorRandom;
 use rand::thread_rng;
 
@@ -28,23 +28,21 @@ where
         Ok(self.chain.get(from).cloned().unwrap_or_else(WeightMap::new))
     }
 
-    fn random(&self) -> Result<[T; N]> {
+    fn random(&self) -> Result<Option<[T; N]>> {
         let mut rng = thread_rng();
-        self.chain
-            .keys()
-            .choose(&mut rng)
-            .cloned()
-            .context("Failed to choose random states.")
+        let random = self.chain.keys().choose(&mut rng).cloned();
+        Ok(random)
     }
 
-    fn random_starting_with(&self, state: &T) -> Result<[T; N]> {
+    fn random_starting_with(&self, state: &T) -> Result<Option<[T; N]>> {
         let mut rng = thread_rng();
-        self.chain
+        let random = self
+            .chain
             .keys()
             .filter(|key| key.first() == Some(state))
             .choose(&mut rng)
-            .cloned()
-            .context("Failed to choose random states starting with given state.")
+            .cloned();
+        Ok(random)
     }
 
     fn increment_weight(&mut self, link: Link<T, N>) -> Result<()> {

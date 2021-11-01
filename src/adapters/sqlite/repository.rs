@@ -70,26 +70,32 @@ impl SqliteRepository {
         Ok(())
     }
 
-    fn get_from_states<T, const N: usize>(&self, sql: &str, params: impl Params) -> Result<[T; N]>
+    fn get_starting_states<T, const N: usize>(
+        &self,
+        sql: &str,
+        params: impl Params,
+    ) -> Result<Option<[T; N]>>
     where
         T: FromSql,
     {
-        self.connection
-            .prepare_cached(sql)?
-            .query_and_then(params, |row| {
-                let mut words: ArrayVec<_, N> = ArrayVec::new();
-                for idx in 0..N {
-                    words.push(row.get(idx)?);
-                }
-                let words = unsafe {
-                    // This is safe, because we've just pushed N items.
-                    // Using unchecked variant allows us to omit T: Debug.
-                    words.into_inner_unchecked()
-                };
-                Ok(words)
-            })?
-            .next()
-            .unwrap()
+        let mut statement = self.connection.prepare_cached(sql)?;
+        let mut rows = statement.query_map(params, |row| {
+            let mut words: ArrayVec<_, N> = ArrayVec::new();
+            for idx in 0..N {
+                words.push(row.get(idx)?);
+            }
+            let words = unsafe {
+                // This is safe, because we've just pushed N items.
+                // Using unchecked variant allows us to omit T: Debug.
+                words.into_inner_unchecked()
+            };
+            Ok(words)
+        })?;
+        match rows.next() {
+            Some(Err(Error::QueryReturnedNoRows)) => Ok(None),
+            Some(r) => Ok(Some(r?)),
+            None => Ok(None),
+        }
     }
 }
 
@@ -108,14 +114,14 @@ where
         Ok(map)
     }
 
-    fn random(&self) -> Result<[T; N]> {
+    fn random(&self) -> Result<Option<[T; N]>> {
         let sql = schema::get_random(N, false);
-        self.get_from_states(&sql, [])
+        self.get_starting_states(&sql, [])
     }
 
-    fn random_starting_with(&self, state: &T) -> Result<[T; N]> {
+    fn random_starting_with(&self, state: &T) -> Result<Option<[T; N]>> {
         let sql = schema::get_random(N, true);
-        self.get_from_states(&sql, [state])
+        self.get_starting_states(&sql, [state])
     }
 
     fn increment_weight(&mut self, link: Link<T, N>) -> Result<()> {
