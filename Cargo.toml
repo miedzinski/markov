@@ -9,5 +9,4 @@ arrayvec = "0.7.2"
 cached = "0.26.2"
 rand = "0.8.0"
 rusqlite = "0.26.1"
-smallvec = { version = "1.7.0", features = ["const_generics"] }
 sql-builder = "3.1"

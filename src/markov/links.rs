@@ -1,4 +1,4 @@
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 
 use super::types::Link;
 
@@ -15,7 +15,7 @@ impl<T: Iterator> LinkIterator for T {}
 
 pub struct Links<T, I, const N: usize> {
     iter: I,
-    from: SmallVec<[T; N]>,
+    from: ArrayVec<T, N>,
 }
 
 impl<'a, T, I, const N: usize> Links<T, I, N>
@@ -26,7 +26,7 @@ where
     where
         II: IntoIterator<Item = T, IntoIter = I>,
     {
-        let mut from = SmallVec::new();
+        let mut from = ArrayVec::new();
         let mut iter = iter.into_iter();
 
         for _ in 0..N {
