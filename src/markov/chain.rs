@@ -1,22 +1,31 @@
+use std::marker::PhantomData;
+
 use anyhow::Result;
 
 use super::choose::Choose;
 use super::links::LinkIterator;
 use super::repository::Repository;
 
-pub struct Chain<'a, T, const N: usize> {
-    repository: &'a mut dyn Repository<T, N>,
-    chooser: &'a dyn Choose<T>,
+pub struct Chain<T, R, C, const N: usize>
+where
+    R: Repository<T, N>,
+    C: Choose<T>,
+{
+    repository: R,
+    chooser: C,
+    phantom: PhantomData<[T; N]>,
 }
 
-impl<T, const N: usize> Chain<'_, T, N> {
-    pub fn new<'a>(
-        repository: &'a mut dyn Repository<T, N>,
-        chooser: &'a dyn Choose<T>,
-    ) -> Chain<'a, T, N> {
+impl<T, R, C, const N: usize> Chain<T, R, C, N>
+where
+    R: Repository<T, N>,
+    C: Choose<T>,
+{
+    pub fn new(repository: R, chooser: C) -> Chain<T, R, C, N> {
         Chain {
             repository,
             chooser,
+            phantom: PhantomData::default(),
         }
     }
 
@@ -33,8 +42,8 @@ impl<T, const N: usize> Chain<'_, T, N> {
 
     pub fn iter_from(&self, start: [T; N]) -> ChainIterator<T, N> {
         ChainIterator {
-            repository: self.repository,
-            chooser: self.chooser,
+            repository: &self.repository,
+            chooser: &self.chooser,
             previous: start,
         }
     }

@@ -3,17 +3,27 @@ use std::iter;
 use anyhow::{Context, Result};
 
 use super::chain::Chain;
+use super::choose::Choose;
+use super::repository::Repository;
 use super::shuffle::Shuffle;
 
 static END: &str = "\0";
 
-pub struct Bot<'a, S, const N: usize> {
-    chain: Chain<'a, String, N>,
+pub struct Bot<R, C, S, const N: usize>
+where
+    R: Repository<String, N>,
+    C: Choose<String>,
+{
+    chain: Chain<String, R, C, N>,
     shuffler: S,
 }
 
-impl<'a, S, const N: usize> Bot<'a, S, N> {
-    pub fn new(chain: Chain<'a, String, N>, shuffler: S) -> Bot<'a, S, N> {
+impl<R, C, S, const N: usize> Bot<R, C, S, N>
+where
+    R: Repository<String, N>,
+    C: Choose<String>,
+{
+    pub fn new(chain: Chain<String, R, C, N>, shuffler: S) -> Bot<R, C, S, N> {
         Bot { chain, shuffler }
     }
 
@@ -44,11 +54,11 @@ impl<'a, S, const N: usize> Bot<'a, S, N> {
             .and_then(|start| self.build_sentence(start))
     }
 
-    pub fn reply<'c>(&self, message: &'c str) -> Result<String>
+    pub fn reply(&self, message: &str) -> Result<String>
     where
-        S: Shuffle<&'c str>,
+        S: Shuffle<String>,
     {
-        let mut words: Vec<_> = message.split_whitespace().collect();
+        let mut words: Vec<_> = message.split_whitespace().map(str::to_string).collect();
         self.shuffler.shuffle(&mut words);
 
         for word in words {

@@ -10,3 +10,12 @@ cached = "0.26.2"
 rand = "0.8.0"
 rusqlite = "0.26.1"
 sql-builder = "3.1"
+
+[dependencies.serenity]
+version = "0.10"
+default-features = false
+features = ["cache", "client", "gateway", "model", "rustls_backend"]
+
+[dependencies.tokio]
+version = "1.13.0"
+features = ["rt-multi-thread"]
