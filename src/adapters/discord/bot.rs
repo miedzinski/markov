@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serenity::Client;
 use tokio::sync::mpsc;
 
@@ -8,11 +9,14 @@ use crate::markov::choose::Choose;
 use crate::markov::repository::Repository;
 use crate::markov::shuffle::Shuffle;
 
-pub struct DiscordBot;
+pub struct DiscordBot<'a> {
+    token: &'a str,
+    verbosity: f64,
+}
 
-impl DiscordBot {
-    pub fn new() -> DiscordBot {
-        DiscordBot
+impl<'a> DiscordBot<'a> {
+    pub fn new(token: &'a str, verbosity: f64) -> DiscordBot<'a> {
+        DiscordBot { token, verbosity }
     }
 
     pub async fn run<const N: usize>(
@@ -23,13 +27,11 @@ impl DiscordBot {
             impl Shuffle<String> + Send + 'static,
             N,
         >,
-        token: &str,
-        verbosity: f64,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let (sender, receiver): (mpsc::Sender<MessageCommand>, mpsc::Receiver<MessageCommand>) =
             mpsc::channel(32);
-        let handler = Handler::new(verbosity, sender);
-        let mut client = Client::builder(&token).event_handler(handler).await?;
+        let handler = Handler::new(self.verbosity, sender);
+        let mut client = Client::builder(&self.token).event_handler(handler).await?;
 
         tokio::spawn(handle_messages(bot, receiver));
         client.start().await.map_err(Into::into)
@@ -44,7 +46,7 @@ async fn handle_messages<const N: usize>(
         N,
     >,
     mut receiver: mpsc::Receiver<MessageCommand>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     while let Some(cmd) = receiver.recv().await {
         let content = &cmd.content;
 

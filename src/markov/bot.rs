@@ -62,7 +62,7 @@ where
         self.shuffler.shuffle(&mut words);
 
         for word in words {
-            let start = self.chain.random_starting_with(&word.to_string())?;
+            let start = self.chain.random_starting_with(&word)?;
             if let Some(start) = start {
                 return self.build_sentence(start);
             }

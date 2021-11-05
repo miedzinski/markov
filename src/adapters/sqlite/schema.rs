@@ -1,3 +1,4 @@
+use anyhow::Result;
 use cached::proc_macro::cached;
 use rusqlite::Connection;
 use sql_builder::{name, SqlBuilder, SqlName};
@@ -6,7 +7,7 @@ fn word_fk(nth: usize) -> String {
     format!("word_{}_id", nth)
 }
 
-pub fn setup<const N: usize>(connection: &Connection) -> anyhow::Result<()> {
+pub fn setup<const N: usize>(connection: &Connection) -> Result<()> {
     let word_fk_defs = (0..N)
         .map(|i| format!("{} INTEGER NOT NULL REFERENCES word (id)", word_fk(i)))
         .collect::<Vec<_>>()

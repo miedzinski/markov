@@ -72,15 +72,15 @@ async fn main() -> Result<()> {
             let repository = SqliteRepository::new(connection?);
             let chain = Chain::new(repository, chooser);
             let bot: Bot<_, _, _, 2> = Bot::new(chain, shuffler);
-            let discord = DiscordBot::new();
-            discord.run(bot, token, verbosity).await
+            let discord = DiscordBot::new(token, verbosity);
+            discord.run(bot).await
         }
         None => {
             let repository = MemoryRepository::new();
             let chain = Chain::new(repository, chooser);
             let bot: Bot<_, _, _, 2> = Bot::new(chain, shuffler);
-            let discord = DiscordBot::new();
-            discord.run(bot, token, verbosity).await
+            let discord = DiscordBot::new(token, verbosity);
+            discord.run(bot).await
         }
     }
 }
