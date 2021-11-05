@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
         .arg(
             Arg::with_name("setup-db")
                 .long("setup-db")
-                .requires("sqlite"),
+                .requires("sqlite-path"),
         )
         .arg(
             Arg::with_name("token")
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
-    let connection = matches.value_of("sqlite").map(Connection::open);
+    let connection = matches.value_of("sqlite-path").map(Connection::open);
 
     if matches.is_present("setup-db") {
         return setup::<ORDER>(&connection.unwrap()?);
