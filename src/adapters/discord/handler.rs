@@ -2,7 +2,6 @@ use rand::{thread_rng, Rng};
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
 use serenity::model::channel::Message;
-use serenity::model::misc::Mentionable;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::adapters::discord::command::MessageCommand;
@@ -38,7 +37,7 @@ impl EventHandler for Handler {
         let should_reply = self.should_reply(&ctx, &msg).await;
         let content = msg
             .content
-            .strip_prefix(&ctx.cache.current_user().await.mention().to_string())
+            .strip_prefix(&format!("<@!{}>", &ctx.cache.current_user_id().await))
             .map(str::to_string)
             .unwrap_or(msg.content);
         let command = MessageCommand {
